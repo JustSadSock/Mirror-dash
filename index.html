@@ -1,218 +1,28 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no"/>
-  <title>5×5 PvP Game</title>
+  <meta charset="UTF-8" />
+  <!-- мобильный холст на полный экран -->
+  <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <title>Mirror Runner</title>
+
+  <!-- мини-CSS, чтобы канва заняла весь экран и текст счёта был читабельным -->
   <style>
-    * { box-sizing:border-box; margin:0; padding:0; }
-    html,body { width:100%; height:100%; font-family:sans-serif; overflow:hidden; background:#222; }
-
-    /* Первый экран */
-    #modeSelect, #difficultySelect {
-      display:flex; flex-direction:column;
-      width:100%; height:80vh; margin:10vh auto 0;
-    }
-    .panel, .panelDiff {
-      flex:1; margin:5px; border-radius:8px;
-      display:flex; align-items:center; justify-content:center;
-      cursor:pointer; font-size:32px; color:#fff;
-    }
-    .modeBtn { background:#285; }
-    .rulesBtn { background:orange; color:#000; }
-    #difficultySelect { display:none; }
-    .easy   { background:#4caf50; }
-    .medium { background:#ff9800; }
-    .hard   { background:#f44336; }
-
-    /* Правила */
-    #rulesOverlay {
-      display:none; position:absolute;
-      top:10%; left:10%; width:80%; height:80%;
-      background:#333; border:2px solid #888;
-      border-radius:8px; padding:20px; z-index:30;
-      overflow:auto;
-    }
-    #rulesOverlay h2, #rulesOverlay h3 { color:#fff; }
-    #rulesOverlay p, #rulesOverlay ul { color:#ddd; margin:8px 0; }
-    #rulesOverlay ul { padding-left:20px; }
-    #rulesClose {
-      margin-top:20px; background:#840; color:#fff;
-      padding:8px 16px; border:none; border-radius:4px;
-      cursor:pointer;
-    }
-
-    /* Поле и UI */
-    #board {
-      visibility:hidden;
-      display:grid; grid-template:repeat(5,60px)/repeat(5,60px);
-      gap:2px; margin:10px auto;
-      position:relative; left:60px;
-    }
-    .cell {
-      width:60px; height:60px;
-      background:#444; border:1px solid #555;
-      position:relative;
-    }
-    .dying-cell { background:rgba(255,0,0,0.3)!important; }
-
-    #ui {
-      visibility:hidden;
-      width:100%; max-width:360px;
-      margin:10px auto;
-      background:rgba(0,0,0,0.7);
-      padding:10px; display:flex;
-      flex-direction:column; gap:6px;
-    }
-    #phase { text-align:center; color:#fff; min-height:24px; }
-    #planCells { display:flex; justify-content:space-between; margin-bottom:6px; }
-    .planCell {
-      width:18%; height:30px;
-      background:#333; border:1px solid #555;
-      border-radius:4px;
-      display:flex; align-items:center; justify-content:center;
-      font-size:18px; color:#fff;
-    }
-
-    #actions {
-      display:grid;
-      grid-template:repeat(3,1fr)/repeat(2,1fr);
-      gap:6px;
-    }
-    #actions button,
-    #btn-del, #btn-next {
-      padding:8px; font-size:16px; border:none;
-      background:#285; color:#fff; border-radius:4px;
-      cursor:pointer;
-    }
-    #actions button:disabled, .blocked,
-    #btn-next:disabled {
-      background:#555; cursor:default;
-    }
-
-    /* Юниты и эффекты */
-    .playerA, .playerB {
-      position:absolute; width:40px; height:40px;
-      border-radius:50%; top:50%; left:50%;
-      transform:translate(-50%,-50%); z-index:5;
-    }
-    .playerA { background:#0af; }
-    .playerB { background:#f40; }
-    .playerHalf {
-      position:absolute; width:20px; height:40px;
-      top:50%; transform:translateY(-50%); z-index:5;
-    }
-    .halfA {
-      background:#0af;
-      border-top-left-radius:40px; border-bottom-left-radius:40px;
-      left:10px;
-    }
-    .halfB {
-      background:#f40;
-      border-top-right-radius:40px; border-bottom-right-radius:40px;
-      right:10px;
-    }
-    .attack {
-      position:absolute; width:100%; height:100%;
-      background:rgba(255,0,0,0.5);
-      animation:flash .2s ease; z-index:2;
-    }
-    .shield {
-      position:absolute; width:80%; height:80%;
-      background:rgba(0,0,255,0.6); border-radius:50%;
-      top:50%; left:50%; transform:translate(-50%,-50%);
-      animation:pop .2s ease; z-index:6;
-    }
-    @keyframes flash { from{opacity:0} to{opacity:0.7} }
-    @keyframes pop   { from{transform:translate(-50%,-50%) scale(0)}
-                       to{transform:translate(-50%,-50%) scale(1)} }
-
-    .planMove, .planAttack, .planShield {
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      z-index:4; opacity:0.9; transition:all .15s ease;
-    }
-    .planMove   { color:#fff; font-size:32px; line-height:60px; text-align:center; }
-    .planAttack { color:#f44; font-size:32px; line-height:60px; text-align:center; }
-    .planShield { width:60%; height:60%; border:3px solid #4af; border-radius:50%; }
-
-    /* Оверлей атаки */
-    #atkOverlay {
-      visibility:hidden;
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:rgba(0,0,0,0.8); padding:10px;
-      display:flex; flex-wrap:wrap; gap:6px;
-      border-radius:6px; z-index:10;
-    }
-    #atkOverlay button { background:#a22; color:#fff; }
-    #atkOverlay .confirm { background:#2a2; color:#fff; flex:1 1 100%; }
-
-    /* Результат */
-    #resultOverlay {
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:#333; padding:20px;
-      border-radius:6px; text-align:center;
-      z-index:20;
-    }
-    #resultOverlay button { margin-top:10px; padding:8px 16px; }
-
-    /* Фикс для десктопа */
-    @media (min-width: 600px) {
-      #board { position: static; left: auto; margin:10px auto; }
+    html,body{margin:0;height:100%;background:#111;overflow:hidden;}
+    #gameCanvas{display:block;width:100%;height:100%;touch-action:none;}
+    #score{
+      position:fixed;top:8px;left:50%;transform:translateX(-50%);
+      font:700 24px/1 sans-serif;color:#fff;pointer-events:none;
+      text-shadow:0 0 4px #000;
     }
   </style>
 </head>
 <body>
+  <div id="score">0</div>
+  <canvas id="gameCanvas"></canvas>
 
-  <div id="modeSelect">
-    <div id="btn1p" class="panel modeBtn">1 игрок</div>
-    <div id="rulesBtnInitial" class="panel rulesBtn">Правила</div>
-    <div id="btn2p" class="panel modeBtn">2 игрока</div>
-  </div>
-
-  <div id="difficultySelect">
-    <div class="panelDiff easy">Легко</div>
-    <div class="panelDiff medium">Средне</div>
-    <div class="panelDiff hard">Сложно</div>
-  </div>
-
-  <div id="rulesOverlay">
-    <h2>Концепция и правила игры</h2>
-    <h3>Общее</h3>
-    <p>Это пошаговая PvP-арена 5×5 для двух игроков. Игра идёт до трёх раундов + «внезапная смерть» (центр 3×3).</p>
-    <!-- ... остальное содержимое правил ... -->
-    <button id="rulesClose">Закрыть</button>
-  </div>
-
-  <div id="board"></div>
-
-  <div id="ui">
-    <div id="phase"></div>
-    <div id="planCells">
-      <div class="planCell" id="pc0"></div>
-      <div class="planCell" id="pc1"></div>
-      <div class="planCell" id="pc2"></div>
-      <div class="planCell" id="pc3"></div>
-      <div class="planCell" id="pc4"></div>
-    </div>
-    <div id="actions">
-      <button data-act="up">↑</button>
-      <button data-act="down">↓</button>
-      <button data-act="left">←</button>
-      <button data-act="right">→</button>
-      <button data-act="attack">⚔</button>
-      <button data-act="shield">🛡</button>
-    </div>
-    <div style="display:flex;gap:6px;">
-      <button id="btn-del">← Удалить</button>
-      <button id="btn-next">▶ Далее</button>
-    </div>
-  </div>
-
-  <div id="atkOverlay"></div>
-
-  <script src="js/core.js"></script>
+  <!-- вся логика пока в одном файле -->
+  <script src="js/game.js"></script>
 </body>
 </html>
