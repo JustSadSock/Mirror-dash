@@ -19,10 +19,18 @@
   </style>
 </head>
 <body>
+ <!-- … верхняя часть index.html остаётся без изменений … -->
   <div id="score">0</div>
   <canvas id="gameCanvas"></canvas>
 
-  <!-- вся логика пока в одном файле -->
+  <!-- оверлей «Game Over» -->
+  <div id="overlay" hidden>
+    <div id="overPanel">
+      <p id="finalScore">Score 0</p>
+      <button id="restartBtn">Заново</button>
+    </div>
+  </div>
+
   <script src="js/core.js"></script>
 </body>
 </html>
